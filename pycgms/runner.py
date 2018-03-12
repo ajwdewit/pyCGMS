@@ -24,6 +24,9 @@ soil_identifiers = {8:  ("smu_no", "smu_area", "stu_no", "stu_perc"),
                     12: ("smu_no", "smu_area", "stu_no", "stu_perc"),
                     14: ("idsmu", "smu_area", "idstu", "stu_perc")}
 
+# Parameters with date types that cannot be averaged
+date_type_variables = ["DOS", "DOE", "DOV", "DOA", "DOM", "DOH"]
+
 def valid_date_type(arg_date_str):
     """custom argparse *date* type for user dates values given from the command line"""
     try:
@@ -91,26 +94,15 @@ def get_preceeding_dekad(c):
     return prec_dekad
 
 
-def remove_folder_contents(folder):
-
-    for root, dirs, files in os.walk(folder):
-        for f in files:
-            os.unlink(os.path.join(root, f))
-        for d in dirs:
-            shutil.rmtree(os.path.join(root, d))
-
-
-def weighted_avg(group, avg_name, weight_name):
-    """ http://stackoverflow.com/questions/10951341/pandas-dataframe-aggregate-function-using-multiple-columns
-    In rare instance, we may not have weights, so just return the mean. Customize this if your business case
-    should return otherwise.
+def weighted_avg(group, col_name, weight_name):
+    """Compute the weighted average for col_name from the grouped dataframe using weight_name as weights.
     """
-    d = group[avg_name]
-    w = group[weight_name]
+    d = group[col_name].values
+    w = group[weight_name].values
     try:
         return np.average(d, weights=w)
-    except ZeroDivisionError:
-        return d.mean()
+    except Exception as e:
+        pass
 
 
 def group_dataframe(df, groupby, excluding, weightby):
@@ -134,7 +126,6 @@ def group_dataframe(df, groupby, excluding, weightby):
 
 def main():
 
-    remove_folder_contents(pcse.settings.METEO_CACHE_DIR)
     parser = create_parser()
     args = parser.parse_args()
     if None in [args.crop, args.year, args.dsn, args.db_version]:
@@ -231,13 +222,20 @@ def main():
         # Start aggregating simulation results
         # First aggregate all STU's into SMU's by using the 'stu_perc' percentages as weights
         if args.aggr_level in ("smu", "grid"):
-            df_simyield_wlp_smu = group_dataframe(df_simyield_wlp_stu,
-                                                  groupby=["day", lbl_smu], weightby=lbl_stu_perc,
-                                                  excluding=["day", lbl_smu, lbl_stu, lbl_stu_perc])
+            df_simyield_wlp_smu = \
+                group_dataframe(df_simyield_wlp_stu, groupby=["day", lbl_smu], weightby=lbl_stu_perc,
+                                excluding=["day", lbl_smu, lbl_stu, lbl_stu_perc])
+            df_simyield_wlp_summary_smu = \
+                group_dataframe(df_simyield_wlp_summary_stu, groupby=[lbl_smu], weightby=lbl_stu_perc,
+                                excluding=[lbl_smu, lbl_stu, lbl_stu_perc] + date_type_variables)
 
             # Next aggregate all SMU's to the grid level by using the 'smu_area' as weights
             if args.aggr_level == 'grid':
-                df_simyield_wlp_grid = group_dataframe(df_simyield_wlp_smu, groupby=["day"], weightby=lbl_smu_area,
-                                                       excluding=["day", lbl_smu, lbl_smu_area])
+                df_simyield_wlp_grid = \
+                    group_dataframe(df_simyield_wlp_smu, groupby=["day"], weightby=lbl_smu_area,
+                                    excluding=["day", lbl_smu, lbl_smu_area])
+                df_simyield_wlp_summary_grid = \
+                    group_dataframe(df_simyield_wlp_summary_smu, groupby=[], weightby=lbl_smu_area,
+                                    excluding=[lbl_smu, lbl_smu_area])
 
         print(1)

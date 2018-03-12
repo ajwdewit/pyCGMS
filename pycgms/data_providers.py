@@ -1,17 +1,10 @@
 import sqlalchemy as sa
+
 from .runner import db
-# if db.version == 8:
-#     from pcse.db.cgms8 import GridWeatherDataProvider, AgroManagementDataProvider, SoilDataIterator, \
-#     CropDataProvider, STU_Suitability, SiteDataProvider
-# elif db.version == 12:
-#     from pcse.db.cgms12 import WeatherObsGridDataProvider, AgroManagementDataProvider, SoilDataIterator, \
-#     CropDataProvider, STU_Suitability, SiteDataProvider
-# elif db.version == 14:
-#     from pcse.db.cgms14 import WeatherObsGridDataProvider, AgroManagementDataProvider, SoilDataIterator,\
-#     CropDataProvider, STU_Suitability, SiteDataProvider
-# else:
-#     msg = "Unsupport CGMS DB version: %i. Support versions are 8, 12, and 14." % db.version
 from pcse.db import cgms8, cgms12, cgms14
+# Note: you cannot import the dataproviders from the right CGMS version here
+# already because db.version will only be available AFTER this module has
+# been imported.
 
 
 def get_agromanagement(engine, grid, crop, year):
@@ -28,11 +21,11 @@ def get_agromanagement(engine, grid, crop, year):
 
 def get_weatherdata(engine, grid, start, end):
     if db.version == 8:
-        wdp = cgms8.GridWeatherDataProvider(engine, grid_no=grid, start_date=start, end_date=end)
+        wdp = cgms8.GridWeatherDataProvider(engine, grid_no=grid, start_date=start, end_date=end, use_cache=False)
     elif db.version == 12:
-        wdp = cgms12.WeatherObsGridDataProvider(engine, grid_no=grid, start_date=start, end_date=end)
+        wdp = cgms12.WeatherObsGridDataProvider(engine, grid_no=grid, start_date=start, end_date=end, use_cache=False)
     else:
-        wdp = cgms14.WeatherObsGridDataProvider(engine, idgrid=grid, start_date=start, end_date=end)
+        wdp = cgms14.WeatherObsGridDataProvider(engine, idgrid=grid, start_date=start, end_date=end, use_cache=False)
 
     return wdp
 
