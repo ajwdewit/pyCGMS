@@ -74,7 +74,7 @@ def create_parser():
                         help='Type of output file to write', required=False, type=str
                         )
     parser.add_argument('--use_isw_date', dest='use_isw_date', action='store', default=False,
-                        help='If True the start_date from the table INITIAL_SOIL_WATER will be used as'
+                        help='If True the start_date from the table INITIAL_SOIL_WATER will be used as '
                              'campaign_start_date, default False.', required=False, type=bool
                         )
 
