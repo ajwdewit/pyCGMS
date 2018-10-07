@@ -1,0 +1,23 @@
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+[tool.flit.metadata]
+module = "pycgms"
+author = "Allard de Wit"
+author-email = "allard.dewit@wur.nl"
+home-page = "https://github.com/ajwdewit/pyCGMS"
+requires = [
+    "pcse >=5.4",
+]
+
+description-file="README.md"
+classifiers=[
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)",
+    "Programming Language :: Python :: 3",
+]
+
+[tool.flit.scripts]
+flit = "flit:start"

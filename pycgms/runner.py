@@ -63,12 +63,15 @@ def create_parser():
                              "simulations in the current year where not all weather data are "
                              "available up till the end of the simulation."
                         )
-    parser.add_argument('--output', dest='output', action='store', default=None, type=str, metavar="OUT_PATH",
-                        help="Store simulation results at this location. If not provided "
-                             "then the system temp location will be used."
-                        )
     parser.add_argument('--aggr_level', dest='aggr_level', action='store', default='stu', choices=["stu", "smu", "grid"],
                         help='Aggregation level for output, default is "stu"', required=False, type=str
+                        )
+    parser.add_argument('--output', dest='output', action='store', type=str, metavar="OUT_PATH", required = True,
+                        help="Store simulation results at this location."
+                        )
+    parser.add_argument('--output_type', dest='output_type', action='store', default='csv',
+                        choices=["csv", "xls", "hdf5", "json"],
+                        help='Type of output file to write', required=False, type=str
                         )
     parser.add_argument('--use_isw_date', dest='use_isw_date', action='store', default=False,
                         help='If True the start_date from the table INITIAL_SOIL_WATER will be used as'
@@ -141,6 +144,7 @@ def main():
         grids = dp.get_grids(engine, args.cropd, args.year)
     else:
         grids = [args.grid,]
+
     for grid in grids:
         agro = dp.get_agromanagement(engine, grid, args.crop, args.year)
         # Fix the campaign start/end onto dekad boundaries
@@ -150,6 +154,7 @@ def main():
         agro.campaign_end_date = end_dekad
 
         # We want to pull 180 days of additional weather data to allow water balance initialization
+        # with the --use-isw option
         start_date_weather = start_dekad - dt.timedelta(days=180)
         weatherdata = dp.get_weatherdata(engine, grid, start=start_date_weather, end=end_dekad)
 
@@ -168,13 +173,24 @@ def main():
         else:
             wofost.run_till(agro.campaign_end_date)
         df_simyield_pp = pd.DataFrame(wofost.get_output())
-        df_simyield_summary_pp = pd.DataFrame(wofost.get_summary_output())
+        df_simyield_pp_summary = pd.DataFrame(wofost.get_summary_output())
 
-        # Run water-limited simulation results
-        df_simyield_wlp_stu = None
-        df_simyield_wlp_summary_stu = None
+        # First add grid number and simulation type to the dataframe
+        df_simyield_pp_summary["grid"] = grid
+        df_simyield_pp["grid"] = grid
+        df_simyield_pp_summary["sim_type"] = "pp"
+        df_simyield_pp["sim_type"] = "pp"
+
+
+        # Pull in soil data for water-limited run
         soil_iterator = dp.get_soiliterator(engine, grid)
         suitable_stu = dp.get_suitability(engine, args.crop)
+
+        # Placeholders for simulation_results at stu level
+        df_simyield_wlp = None
+        df_simyield_wlp_summary = None
+
+        # Run water-limited simulation results
         for smu_no, area, stu_no, percentage, soild in soil_iterator:
             # Check if this is a suitable STU
             if stu_no not in suitable_stu:
@@ -203,10 +219,10 @@ def main():
             df[lbl_stu] = stu_no
             df[lbl_smu_area] = area
             df[lbl_stu_perc] = percentage
-            if df_simyield_wlp_stu is None:
-                df_simyield_wlp_stu = df
+            if df_simyield_wlp is None:
+                df_simyield_wlp = df
             else:
-                df_simyield_wlp_stu = pd.concat([df_simyield_wlp_stu, df])
+                df_simyield_wlp = pd.concat([df_simyield_wlp, df])
 
             # Get summary output
             df_summary = pd.DataFrame(wofost.get_summary_output())
@@ -214,28 +230,59 @@ def main():
             df_summary[lbl_stu] = stu_no
             df_summary[lbl_smu_area] = area
             df_summary[lbl_stu_perc] = percentage
-            if df_simyield_wlp_summary_stu is None:
-                df_simyield_wlp_summary_stu = df_summary
+            if df_simyield_wlp_summary is None:
+                df_simyield_wlp_summary = df_summary
             else:
-                df_simyield_wlp_summary_stu = pd.concat([df_simyield_wlp_summary_stu, df_summary])
+                df_simyield_wlp_summary = pd.concat([df_simyield_wlp_summary, df_summary])
 
         # Start aggregating simulation results
+
+        # First add grid number and simulation type to the dataframes
+        df_simyield_wlp_summary["grid"] = grid
+        df_simyield_wlp["grid"] = grid
+
         # First aggregate all STU's into SMU's by using the 'stu_perc' percentages as weights
         if args.aggr_level in ("smu", "grid"):
-            df_simyield_wlp_smu = \
-                group_dataframe(df_simyield_wlp_stu, groupby=["day", lbl_smu], weightby=lbl_stu_perc,
-                                excluding=["day", lbl_smu, lbl_stu, lbl_stu_perc])
-            df_simyield_wlp_summary_smu = \
-                group_dataframe(df_simyield_wlp_summary_stu, groupby=[lbl_smu], weightby=lbl_stu_perc,
-                                excluding=[lbl_smu, lbl_stu, lbl_stu_perc] + date_type_variables)
+            df_simyield_wlp = \
+                group_dataframe(df_simyield_wlp, groupby=["grid", "day", lbl_smu], weightby=lbl_stu_perc,
+                                excluding=["grid", "day", lbl_smu, lbl_stu, lbl_stu_perc])
+            df_simyield_wlp_summary = \
+                group_dataframe(df_simyield_wlp_summary, groupby=["grid", lbl_smu], weightby=lbl_stu_perc,
+                                excluding=["grid", lbl_smu, lbl_stu, lbl_stu_perc] + date_type_variables)
 
             # Next aggregate all SMU's to the grid level by using the 'smu_area' as weights
             if args.aggr_level == 'grid':
-                df_simyield_wlp_grid = \
-                    group_dataframe(df_simyield_wlp_smu, groupby=["day"], weightby=lbl_smu_area,
-                                    excluding=["day", lbl_smu, lbl_smu_area])
-                df_simyield_wlp_summary_grid = \
-                    group_dataframe(df_simyield_wlp_summary_smu, groupby=[], weightby=lbl_smu_area,
-                                    excluding=[lbl_smu, lbl_smu_area])
+                df_simyield_wlp = \
+                    group_dataframe(df_simyield_wlp, groupby=["grid", "day"], weightby=lbl_smu_area,
+                                    excluding=["grid", "day", lbl_smu, lbl_smu_area])
+                df_simyield_wlp_summary = \
+                    group_dataframe(df_simyield_wlp_summary, groupby=["grid"], weightby=lbl_smu_area,
+                                    excluding=["grid", lbl_smu, lbl_smu_area])
 
-        print(1)
+        df_simyield_wlp_summary["sim_type"] = "wlp"
+        df_simyield_wlp["sim_type"] = "wlp"
+
+        # combine potential (pp) and water-limited production (wlp) in a single dataframe
+        df_simyield = pd.concat([df_simyield_pp, df_simyield_wlp], sort=True)
+        df_simyield_summary = pd.concat([df_simyield_pp_summary, df_simyield_wlp_summary], sort=True)
+
+        # Write timeseries output file
+        fname_ts = "{grid}_{crop}_{year}.{type}".format(grid=grid, crop=args.crop, year=args.year,
+                                                        type=args.output_type)
+        fname_sum = "{grid}_{crop}_{year}_summary.{type}".format(grid=grid, crop=args.crop, year=args.year,
+                                                                 type=args.output_type)
+        fname_ts = os.path.join(args.output, fname_ts)
+        fname_sum = os.path.join(args.output, fname_sum)
+        if args.output_type == "csv":
+            df_simyield.to_csv(fname_ts, header=True, index=False)
+            df_simyield_summary.to_csv(fname_sum, header=True, index=False)
+        elif args.output_type == "xls":
+            df_simyield.to_excel(fname_ts, index=False)
+            df_simyield_summary.to_excel(fname_sum, index=False)
+        elif args.output_type == "hdf5":
+            df_simyield.to_hdf(fname_ts, mode="w", complevel=9, complib="blosc")
+            df_simyield_summary.to_hdf(fname_sum, mode="w", complevel=9, complib="blosc")
+        elif args.output_type == "json":
+            df_simyield.to_json(fname_ts, orient="records", date_format="iso", lines=True)
+            df_simyield_summary.to_json(fname_sum, orient="records", date_format="iso", lines=True)
+
