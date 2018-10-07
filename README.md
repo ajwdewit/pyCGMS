@@ -66,7 +66,47 @@ After installing PCSE into the environment PyCGMS can be installed with:
 Note that depending on the database system you are using, additional database drivers may
 need to be installed.
 
+Using PyCGMS can be started using the commandline script `pycgms`. Use:
 
+
+    $ pycgms --help
+    usage: pycgms [-h] --db_version {8,12,14} --dsn DSN --crop CROP --year YEAR
+                  [--grid GRID] [--run_till yyyy-mm-dd]
+                  [--aggr_level {stu,smu,grid}] --output OUT_PATH
+                  [--output_type {csv,xls,hdf5,json}]
+                  [--use_isw_date USE_ISW_DATE]
+    
+    Run a gridded WOFOST simulation on a CGMS database.
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      --db_version {8,12,14}
+                            Type of CGMS DB to use (either 8, 12 or 14).
+      --dsn DSN             SQLAlchemy connection URL for CGMS DB to connect to.
+                            See also
+                            http://docs.sqlalchemy.org/en/latest/core/engines.html
+      --crop CROP           Run simulations for given crop number.
+      --year YEAR           Run simulations for given year. The year refers to the
+                            year in the crop_calendar table which usually
+                            indicates the year where sowing of emergence takes
+                            place.
+      --grid GRID           Run simulations for given grid. Optional, by default
+                            all grids will be simulated where the crop is defined.
+      --run_till yyyy-mm-dd
+                            Run simulations up till this date. This is useful for
+                            simulations in the current year where not all weather
+                            data are available up till the end of the simulation.
+      --aggr_level {stu,smu,grid}
+                            Aggregation level for output, default is "stu"
+      --output OUT_PATH     Store simulation results at this location.
+      --output_type {csv,xls,hdf5,json}
+                            Type of output file to write
+      --use_isw_date USE_ISW_DATE
+                            If True the start_date from the table
+                            INITIAL_SOIL_WATER will be used ascampaign_start_date,
+                            default False.
+
+    
 
 
 [CGMS]: https://www.researchgate.net/publication/262335822_CGMS_Version_80_User_Manual_and_Technical_Documentation
