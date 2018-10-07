@@ -20,4 +20,4 @@ classifiers=[
 ]
 
 [tool.flit.scripts]
-flit = "flit:start"
+pycgms = "pycgms:start"

@@ -58,7 +58,7 @@ data. A definition of the structure can be found in JRC wiki using the link abov
 An example CGMS8 database in SQLite can be found [here].
 
 Next, a python environment must be created for PyCGMS. The environment for PyCGMS is similar to
-the environment required for PCSE, so please have a look at the detailed instructions there.
+the environment required for [PCSE], so please have a look at the detailed instructions there.
 After installing PCSE into the environment PyCGMS can be installed with:
 
     pip install pycgms
