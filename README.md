@@ -106,7 +106,22 @@ Using PyCGMS can be started using the commandline script `pycgms`. Use:
                             INITIAL_SOIL_WATER will be used ascampaign_start_date,
                             default False.
 
-    
+## Testing with the example database
+
+Assuming that you are running on windows with the example database located at d:\temp: 
+
+    (py3_pcse) C:\Users\wit015>set DSN="sqlite:///d:/temp/CGMS_Anhui_complete.db"
+
+    (py3_pcse) C:\Users\wit015>echo %DSN%
+    "sqlite:///d:/temp/CGMS_Anhui_complete.db"
+
+    (py3_pcse) C:\Users\wit015>pycgms --dsn=%DSN% --grid=87159 --crop=1 --year=2010 --output=d:\temp --db_version=8
+    Skipping stu: 23686
+    Processing grid: 87159, smu: 4336, stu: 23687
+    Processing grid: 87159, smu: 4337, stu: 11738
+    Processing grid: 87159, smu: 4392, stu: 11774
+
+    (py3_pcse) C:\Users\wit015>
 
 
 [CGMS]: https://www.researchgate.net/publication/262335822_CGMS_Version_80_User_Manual_and_Technical_Documentation
