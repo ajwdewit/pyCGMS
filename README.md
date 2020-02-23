@@ -48,7 +48,7 @@ PyCGMS is very much a work in progress and therefore does not yet provide all fu
 that was implemented by the C++ CGMS version. Notably, PyCGMS does not provide support for
 writing output to the CGMS database structure. This is also a design choice because CGMS provides
 large amount of simulation output that can be better loaded into the database using 
-dedicated loaders. However, such loaders are not yet available.
+dedicated loaders, such as SQLldr for ORACLE and PGloader for PostgresSQL.
 
 
 ## Installation and usage
